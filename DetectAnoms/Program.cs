@@ -23,7 +23,7 @@ namespace DetectAnoms
             Console.WriteLine("Seasonal," + string.Join(",", a.Seasonal));
             Console.WriteLine("Residual," + string.Join(",", a.Residual));
 
-            var c = DetectAnomaly.Detect(b, 128, 80, 5);
+            var c = AnomalyDetector.Detect(b, 128, 80, 5);
             Console.WriteLine("Anomaly," + string.Join(",", c));
 
             Console.ReadKey();

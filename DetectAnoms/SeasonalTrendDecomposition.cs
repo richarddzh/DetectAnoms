@@ -18,6 +18,14 @@ namespace DetectAnoms
     /// </summary>
     public class SeasonalTrendDecomposition
     {
+        /// <summary>
+        /// Simplified implementation for seasonal trend decomposition.
+        /// </summary>
+        /// <param name="a">Input data sequence to decompose</param>
+        /// <param name="maxPeriod">Maximal length of period</param>
+        /// <param name="minPeriod">Minimal length of period</param>
+        /// <param name="trendSmooth">Window size to smooth the trend</param>
+        /// <param name="loop">Repeated loop count to estimate the seasonal component</param>
         public static DecompositionResult Decompose(double[] a, int maxPeriod, int minPeriod, int trendSmooth, int loop)
         {
             var trend = GetTrend(a, trendSmooth);
@@ -38,6 +46,16 @@ namespace DetectAnoms
             return new DecompositionResult(trend, seasonal, residual);
         }
 
+        /// <summary>
+        /// Compute the estimated seasonal mean from a seed for one period.
+        /// Seed is usually the first period or the estimation from the previous epoch.
+        /// </summary>
+        /// <param name="a">Input detrended data</param>
+        /// <param name="seed">Initial period</param>
+        /// <param name="maxPeriod">Maximal length of period</param>
+        /// <param name="minPeriod">Minimal length of period</param>
+        /// <param name="seasonal">Output array for the seasonal component tiled with period average</param>
+        /// <returns>Period average</returns>
         public static double[] SeasonalMean(double[] a, double[] seed, int maxPeriod, int minPeriod, double[] seasonal)
         {
             seed = RemoveAverage(seed);
@@ -51,11 +69,10 @@ namespace DetectAnoms
                 int left = offset + minPeriod;
                 int right = offset + maxPeriod;
                 var index = Enumerable.Range(left, right - left + 1)
-                    .Where(x => x + maxPeriod <= a.Length)
+                    .Where(x => x < a.Length)
                     .ToList();
                 if (!index.Any())
                 {
-                    periodOffsets.Add(left);
                     break;
                 }
 
@@ -64,13 +81,15 @@ namespace DetectAnoms
                     .OrderBy(x => x.Item3)
                     .First();
                 offset = newPeriod.Item1;
-                periods.Add(newPeriod.Item2);
                 periodOffsets.Add(offset);
+                if (newPeriod.Item2.Length == maxPeriod)
+                {
+                    periods.Add(newPeriod.Item2);
+                }
             }
 
             var periodAvg = Enumerable.Range(0, maxPeriod)
-                .Select(i => periods.Select(x => x[i]).ToArray())
-                .Select(x => GetMedian(x, 0, x.Length - 1))
+                .Select(i => periods.Select(x => x[i]).GetMedian())
                 .ToArray();
 
             foreach (var index in periodOffsets)
@@ -93,14 +112,14 @@ namespace DetectAnoms
 
         private static double Difference(double[] a, double[] b)
         {
-            return Enumerable.Range(0, a.Length)
+            return Enumerable.Range(0, Math.Min(a.Length, b.Length))
                 .Select(i => (a[i] - b[i]) * (a[i] - b[i]))
-                .Sum();
+                .SafeAverage();
         }
 
         private static double[] RemoveAverage(double[] a)
         {
-            var avg = a.Average();
+            var avg = a.SafeAverage();
             return a.Select(x => x - avg).ToArray();
         }
 
@@ -111,67 +130,10 @@ namespace DetectAnoms
             {
                 int left = Math.Max(0, i - period);
                 int right = Math.Min(a.Length - 1, i + period);
-                result[i] = GetMedian(a, left, right);
+                result[i] = a.Skip(left).Take(right - left + 1).GetMedian();
             }
 
             return result;
-        }
-
-        public static double GetMedian(double[] a, int left, int right)
-        {
-            a = a.Skip(left).Take(right - left + 1).ToArray();
-            right = right - left;
-            left = 0;
-            int m = (left + right) / 2;
-            while (left <= right)
-            {
-                int i = left + 1;
-                int j = right;
-                while (i <= j)
-                {
-                    if (a[i] < a[left])
-                    {
-                        i++;
-                    }
-                    else if (a[j] >= a[left])
-                    {
-                        j--;
-                    }
-                    else
-                    {
-                        double temp = a[i];
-                        a[i] = a[j];
-                        a[j] = temp;
-                        i++;
-                        j--;
-                    }
-                }
-
-                if (i - 1 == m)
-                {
-                    return a[left];
-                }
-                else
-                {
-                    if (i - 1 != left)
-                    {
-                        double temp = a[i - 1];
-                        a[i - 1] = a[left];
-                        a[left] = temp;
-                    }
-
-                    if (m < i - 1)
-                    {
-                        right = i - 2;
-                    }
-                    else
-                    {
-                        left = i;
-                    }
-                }
-            }
-
-            return a[left];
         }
 
         public class DecompositionResult
