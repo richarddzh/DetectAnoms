@@ -105,7 +105,7 @@ namespace DetectAnoms
             for (var treeNode = tree.HeaderTable[item].Node; treeNode != null; treeNode = treeNode.NodeLink)
             {
                 var prefixPath = new List<T>();
-                for (var node = treeNode.Parent; node != null; node = node.Parent)
+                for (var node = treeNode.Parent; node != null && node.Parent != null; node = node.Parent)
                 {
                     prefixPath.Add(node.Name);
                 }

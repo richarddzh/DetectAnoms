@@ -24,7 +24,7 @@ namespace DetectAnoms
             };
 
             var fpgrowth = new FPGrowth<char>();
-            fpgrowth.Fit(trans, null, 2);
+            fpgrowth.Fit(trans, null, 3);
             Trace.Listeners.Add(new ConsoleTraceListener());
             foreach (var item in Enumerable.Zip(fpgrowth.FreqItems, fpgrowth.FreqItemCount, (x, y) => Tuple.Create(x, y)))
             {
