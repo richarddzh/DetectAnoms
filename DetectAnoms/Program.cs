@@ -24,9 +24,14 @@ namespace DetectAnoms
             };
 
             var fpgrowth = new FPGrowth<char>();
-            var tree = fpgrowth.CreateFPTree(trans, null, 2);
+            fpgrowth.Fit(trans, null, 2);
             Trace.Listeners.Add(new ConsoleTraceListener());
-            tree.Root.Dump(8, 2);
+            foreach (var item in Enumerable.Zip(fpgrowth.FreqItems, fpgrowth.FreqItemCount, (x, y) => Tuple.Create(x, y)))
+            {
+                Console.WriteLine("{0}: {1}",
+                    string.Join(", ", item.Item1),
+                    item.Item2);
+            }
 
             Console.ReadKey();
         }

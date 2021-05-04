@@ -9,6 +9,17 @@ namespace DetectAnoms
 {
     public class FPGrowth<T>
     {
+        public IList<IEnumerable<T>> FreqItems { get; set; }
+        public IList<int> FreqItemCount { get; set; }
+
+        public void Fit(IEnumerable<IEnumerable<T>> trans, IEnumerable<int> count, int minSupport)
+        {
+            var tree = this.CreateFPTree(trans, count, minSupport);
+            this.FreqItemCount = new List<int>();
+            this.FreqItems = new List<IEnumerable<T>>();
+            this.MineFPTree(tree, minSupport, Enumerable.Empty<T>(), this.FreqItems, this.FreqItemCount);
+        }
+
         public FPTree CreateFPTree(IEnumerable<IEnumerable<T>> trans, IEnumerable<int> count, int minSupport)
         {
             count = count ?? Enumerable.Repeat(1, int.MaxValue);
@@ -85,6 +96,42 @@ namespace DetectAnoms
             return headerTable
                 .Where(x => x.Value.Count >= minSupport)
                 .ToDictionary(x => x.Key, x => x.Value);
+        }
+
+        private IList<IEnumerable<T>> FindPrefixPath(FPTree tree, T item, out IList<int> count)
+        {
+            var condPats = new List<IEnumerable<T>>();
+            count = new List<int>();
+            for (var treeNode = tree.HeaderTable[item].Node; treeNode != null; treeNode = treeNode.NodeLink)
+            {
+                var prefixPath = new List<T>();
+                for (var node = treeNode.Parent; node != null; node = node.Parent)
+                {
+                    prefixPath.Add(node.Name);
+                }
+                if (prefixPath.Any())
+                {
+                    condPats.Add(prefixPath);
+                    count.Add(treeNode.Count);
+                }
+            }
+            return condPats;
+        }
+
+        private void MineFPTree(FPTree tree, int minSupport, IEnumerable<T> prefix, IList<IEnumerable<T>> freqItems, IList<int> count)
+        {
+            foreach (var kvp in tree.HeaderTable)
+            {
+                var newFreqSet = prefix.Concat(new T[] { kvp.Key }).ToList();
+                freqItems.Add(newFreqSet);
+                count.Add(kvp.Value.Count);
+                var condPats = this.FindPrefixPath(tree, kvp.Key, out var condCount);
+                var condTree = this.CreateFPTree(condPats, condCount, minSupport);
+                if (condTree.HeaderTable.Any())
+                {
+                    this.MineFPTree(condTree, minSupport, newFreqSet, freqItems, count);
+                }
+            }
         }
 
         public class FPTree
