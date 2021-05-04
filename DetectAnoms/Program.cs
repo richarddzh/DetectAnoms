@@ -20,7 +20,7 @@ namespace DetectAnoms
                 "map",
                 "blend",
                 "straigh",
-                "height",
+                "eight",
             };
 
             var fpgrowth = new FPGrowth<char>();
